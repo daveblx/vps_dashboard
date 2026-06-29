@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22-alpine AS frontend
+FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend
 
 WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json* ./
@@ -9,7 +9,7 @@ RUN npm install --omit=dev=false
 COPY frontend/ ./
 RUN npm run build
 
-FROM golang:1.25-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS builder
 
 RUN apk add --no-cache ca-certificates git
 
@@ -21,7 +21,10 @@ RUN go mod download
 COPY . .
 COPY --from=frontend /internal/web/dist ./internal/web/dist
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+ARG TARGETOS
+ARG TARGETARCH
+
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
     -ldflags="-s -w" \
     -o /out/server \
     ./cmd/server
