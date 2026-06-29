@@ -33,9 +33,9 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6 # Upgraded to v6 to handle modern Node runners
         with:
           context: .
           push: true
-          tags: ${{ env.meta.outputs.tags }}
-          labels: ${{ env.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }} # Fixed: changed env to steps
+          labels: ${{ steps.meta.outputs.labels }} # Fixed: changed env to steps
