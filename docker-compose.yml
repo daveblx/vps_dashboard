@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  oled-dashboard-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: oled_dashboard_backend
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    environment:
+      - HOST_PROC=/host/proc
+      - HOST_SYS=/host/sys
+      - APP_ENV=production
+      - LISTEN_ADDR=:8080
+      - METRICS_INTERVAL_SECS=2
+      - DASHBOARD_USERNAME=admin
+      - DASHBOARD_PASSWORD_HASH=$$2a$$12$$YOUR_BCRYPT_HASH_HERE
+    healthcheck:
+      test: ["CMD", "/server", "-health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - traefik_public
+    labels:
+      # Uncomment and configure with your domain:
+      # - "traefik.enable=true"
+      # - "traefik.http.routers.oled-dashboard.rule=Host(`dashboard.yourdomain.com`)"
+      # - "traefik.http.routers.oled-dashboard.entrypoints=websecure"
+      # - "traefik.http.routers.oled-dashboard.tls.certresolver=letsencrypt"
+      # - "traefik.http.services.oled-dashboard.loadbalancer.server.port=8080"
+      # Authelia middleware (uncomment if using Authelia):
+      # - "traefik.http.routers.oled-dashboard.middlewares=authelia@docker"
+      - "traefik.enable=false"
+
+networks:
+  traefik_public:
+    external: true

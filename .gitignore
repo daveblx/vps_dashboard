@@ -1,0 +1,35 @@
+# Build outputs
+/server
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Node dependencies
+node_modules/
+frontend/node_modules/
+
+# Frontend build outputs
+frontend/dist/
+internal/web/dist/
+
+# OS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local
