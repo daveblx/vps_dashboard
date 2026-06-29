@@ -16,8 +16,11 @@ func staticHandler() http.Handler {
 	fileServer := http.FileServer(http.FS(dist))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/")
-		if path == "" {
-			path = "index.html"
+
+		if path == "" || path == "index.html" {
+			r.URL.Path = "/"
+			fileServer.ServeHTTP(w, r)
+			return
 		}
 
 		if _, err := dist.Open(path); err != nil {
