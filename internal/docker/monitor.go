@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 )
@@ -96,7 +95,7 @@ func (m *Monitor) CollectStats(ctx context.Context) ([]ContainerStats, error) {
 			continue
 		}
 
-		var v types.StatsJSON
+		var v container.StatsResponse
 		if err := decodeStats(stats.Body, &v); err != nil {
 			stats.Body.Close()
 			continue
@@ -162,7 +161,7 @@ func formatUptime(d time.Duration) string {
 	return fmt.Sprintf("%dd %dh", days, h)
 }
 
-func calculateCPUPercent(v *types.StatsJSON) float64 {
+func calculateCPUPercent(v *container.StatsResponse) float64 {
 	cpuDelta := float64(v.CPUStats.CPUUsage.TotalUsage - v.PreCPUStats.CPUUsage.TotalUsage)
 	systemDelta := float64(v.CPUStats.SystemUsage - v.PreCPUStats.SystemUsage)
 	if systemDelta <= 0 || cpuDelta <= 0 {
