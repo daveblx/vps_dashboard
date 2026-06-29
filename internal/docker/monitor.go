@@ -6,9 +6,6 @@ import (
 	"io"
 	"strings"
 	"time"
-
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 )
 
 type ContainerInfo struct {
@@ -23,19 +20,19 @@ type ContainerInfo struct {
 }
 
 type ContainerStats struct {
-	ID          string  `json:"id"`
-	Name        string  `json:"name"`
-	CPUPercent  float64 `json:"cpuPercent"`
-	MemoryUsage uint64  `json:"memoryUsage"`
-	MemoryLimit uint64  `json:"memoryLimit"`
+	ID            string  `json:"id"`
+	Name          string  `json:"name"`
+	CPUPercent    float64 `json:"cpuPercent"`
+	MemoryUsage   uint64  `json:"memoryUsage"`
+	MemoryLimit   uint64  `json:"memoryLimit"`
 	MemoryPercent float64 `json:"memoryPercent"`
 }
 
 type Monitor struct {
-	client *client.Client
+	client *Client
 }
 
-func NewMonitor(cli *client.Client) *Monitor {
+func NewMonitor(cli *Client) *Monitor {
 	return &Monitor{client: cli}
 }
 
@@ -43,7 +40,7 @@ func (m *Monitor) ListContainers(ctx context.Context) ([]ContainerInfo, error) {
 	if m.client == nil {
 		return []ContainerInfo{}, nil
 	}
-	containers, err := m.client.ContainerList(ctx, container.ListOptions{All: false})
+	containers, err := m.client.ContainerList(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list containers: %w", err)
 	}
@@ -83,7 +80,7 @@ func (m *Monitor) CollectStats(ctx context.Context) ([]ContainerStats, error) {
 	if m.client == nil {
 		return []ContainerStats{}, nil
 	}
-	containers, err := m.client.ContainerList(ctx, container.ListOptions{All: false})
+	containers, err := m.client.ContainerList(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list containers: %w", err)
 	}
@@ -95,12 +92,12 @@ func (m *Monitor) CollectStats(ctx context.Context) ([]ContainerStats, error) {
 			continue
 		}
 
-		var v container.StatsResponse
-		if err := decodeStats(stats.Body, &v); err != nil {
-			stats.Body.Close()
+		var v StatsResponse
+		if err := decodeStats(stats, &v); err != nil {
+			stats.Close()
 			continue
 		}
-		stats.Body.Close()
+		stats.Close()
 
 		cpuPct := calculateCPUPercent(&v)
 		memUsage := v.MemoryStats.Usage
@@ -126,14 +123,7 @@ func (m *Monitor) StreamLogs(ctx context.Context, containerID string, tail strin
 	if m.client == nil {
 		return nil, fmt.Errorf("docker client unavailable")
 	}
-	opts := container.LogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Follow:     follow,
-		Tail:       tail,
-		Timestamps: true,
-	}
-	return m.client.ContainerLogs(ctx, containerID, opts)
+	return m.client.ContainerLogs(ctx, containerID, tail, follow)
 }
 
 func trimContainerName(names []string) string {
@@ -161,7 +151,7 @@ func formatUptime(d time.Duration) string {
 	return fmt.Sprintf("%dd %dh", days, h)
 }
 
-func calculateCPUPercent(v *container.StatsResponse) float64 {
+func calculateCPUPercent(v *StatsResponse) float64 {
 	cpuDelta := float64(v.CPUStats.CPUUsage.TotalUsage - v.PreCPUStats.CPUUsage.TotalUsage)
 	systemDelta := float64(v.CPUStats.SystemUsage - v.PreCPUStats.SystemUsage)
 	if systemDelta <= 0 || cpuDelta <= 0 {
