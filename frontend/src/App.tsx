@@ -1,20 +1,24 @@
 import { useCallback, useMemo, useState } from 'react'
 import { ContainerList } from './components/ContainerList'
+import { HomePage } from './components/HomePage'
 import { HostMetricsView } from './components/HostMetrics'
 import { LogViewer } from './components/LogViewer'
 import { NavTabs } from './components/NavTabs'
+import { SettingsPage } from './components/SettingsPage'
 import { StatusBar } from './components/StatusBar'
+import { useSettings } from './context/SettingsContext'
 import { useContainers } from './hooks/useContainers'
 import { useLogStream } from './hooks/useLogStream'
 import { useMetricsSocket } from './hooks/useMetricsSocket'
-import type { TabId } from './types'
+import type { ConnectionState, TabId } from './types'
 
 export default function App() {
-  const [tab, setTab] = useState<TabId>('metrics')
+  const { settings } = useSettings()
+  const [tab, setTab] = useState<TabId>('home')
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null)
 
   const { frame, connection } = useMetricsSocket()
-  const { containers, loading, error } = useContainers()
+  const { containers, loading, error } = useContainers(settings.pollIntervalMs)
   const { lines, streaming, error: logError } = useLogStream(
     tab === 'logs' ? selectedContainerId : null,
   )
@@ -29,6 +33,12 @@ export default function App() {
     setTab('logs')
   }, [])
 
+  const connectionLabels: Record<string, string> = {
+    connected: 'LIVE',
+    connecting: 'SYNC',
+    disconnected: 'OFFLINE',
+  }
+
   const isWide = typeof window !== 'undefined' && window.innerWidth >= 768
 
   return (
@@ -36,6 +46,17 @@ export default function App() {
       <StatusBar connection={connection} />
 
       <main className="main">
+        {tab === 'home' && (
+          <HomePage
+            host={frame?.host ?? null}
+            containers={containers}
+            stats={frame?.containers ?? []}
+            containersLoading={loading}
+            containersError={error}
+            connectionLabel={connectionLabels[connection]}
+          />
+        )}
+
         {tab === 'metrics' && <HostMetricsView host={frame?.host ?? null} />}
 
         {tab === 'containers' && (
@@ -57,6 +78,8 @@ export default function App() {
             error={logError}
           />
         )}
+
+        {tab === 'settings' && <SettingsPage />}
       </main>
 
       <NavTabs active={tab} onChange={setTab} />

@@ -6,9 +6,11 @@ interface NavTabsProps {
 }
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
+  { id: 'home', label: 'Home', icon: '⌂' },
   { id: 'metrics', label: 'Metrics', icon: '◫' },
   { id: 'containers', label: 'Containers', icon: '⬡' },
   { id: 'logs', label: 'Logs', icon: '›_' },
+  { id: 'settings', label: 'Settings', icon: '⚙' },
 ]
 
 export function NavTabs({ active, onChange }: NavTabsProps) {
