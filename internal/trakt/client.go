@@ -29,7 +29,7 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 	if err := c.oauth.RefreshIfNeeded(); err != nil {
 		return nil, err
 	}
-
+	
 	token, err := c.store.GetAccessToken()
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 	req.Header.Set("trakt-api-version", "2")
 	req.Header.Set("trakt-api-key", c.creds.Get().ClientID)
 	req.Header.Set("Authorization", "Bearer "+token)
-
+	slog.Info("trakt outgoing request", "method", req.Method, "url", req.URL.String())
 	return c.http.Do(req)
 }
 
