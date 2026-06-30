@@ -93,7 +93,7 @@ type TraktIDs struct {
 }
 
 func (c *Client) GetWatchlist(username string) ([]WatchlistMovie, error) {
-	data, err := c.get(fmt.Sprintf("%s/users/%s/watchlist/movies", traktAPI, username))
+	data, err := c.get(fmt.Sprintf("%s/users/me/watchlist/movies", traktAPI))
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (c *Client) GetWatchlist(username string) ([]WatchlistMovie, error) {
 }
 
 func (c *Client) GetWatched(username string) ([]WatchedMovie, error) {
-	data, err := c.get(fmt.Sprintf("%s/users/%s/watched/movies", traktAPI, username))
+	data, err := c.get(fmt.Sprintf("%s/users/me/watched/movies", traktAPI))
 	if err != nil {
 		return nil, err
 	}
