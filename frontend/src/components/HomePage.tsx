@@ -11,15 +11,22 @@ interface HomePageProps {
   containersLoading: boolean
   containersError: string | null
   connectionLabel: string
+  connected: boolean
 }
 
-function MetricsSummaryWidget({ host }: { host: HostMetrics | null }) {
+function MetricsSummaryWidget({
+  host,
+  connected,
+}: {
+  host: HostMetrics | null
+  connected: boolean
+}) {
   return (
     <div className="widget widget--metrics">
       <div className="widget__header">
         <span className="widget__title">System Overview</span>
       </div>
-      <HostMetricsView host={host} />
+      <HostMetricsView host={host} connected={connected} compact />
     </div>
   )
 }
@@ -35,14 +42,23 @@ function ContainersSummaryWidget({
   loading: boolean
   error: string | null
 }) {
+  const { settings } = useSettings()
+  const pinned = settings.pinnedContainers
+
+  const visible = pinned.length > 0
+    ? containers.filter((c) => pinned.includes(c.id))
+    : containers.slice(0, 4)
+
   return (
     <div className="widget widget--containers">
       <div className="widget__header">
         <span className="widget__title">Containers</span>
-        <span className="widget__badge">{containers.length} running</span>
+        <span className="widget__badge">
+          {pinned.length > 0 ? `${visible.length} pinned` : `${containers.length} running`}
+        </span>
       </div>
       <ContainerList
-        containers={containers}
+        containers={visible}
         stats={stats}
         loading={loading}
         error={error}
@@ -60,6 +76,7 @@ export function HomePage({
   containersLoading,
   containersError,
   connectionLabel,
+  connected,
 }: HomePageProps) {
   const { settings } = useSettings()
   const widgets = settings.homeWidgets
@@ -79,15 +96,13 @@ export function HomePage({
   return (
     <div className="home-page">
       <div className="home-header">
-        <span className="home-header__greeting">
-          {getGreeting()}
-        </span>
+        <span className="home-header__greeting">{getGreeting()}</span>
         <span className="home-header__status">{connectionLabel}</span>
       </div>
 
       <div className="home-widgets">
         {widgets.includes('metrics-summary') && (
-          <MetricsSummaryWidget host={host} />
+          <MetricsSummaryWidget host={host} connected={connected} />
         )}
 
         {widgets.includes('containers-summary') && (

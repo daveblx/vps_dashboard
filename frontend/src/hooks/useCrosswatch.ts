@@ -1,23 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CrosswatchMovie, TMDBMovieDetail, TraktMovie, TraktWatchedMovie } from '../types'
+import type { CrosswatchMovie, TMDBMovieDetail } from '../types'
+import { useTraktAuth } from './useTraktAuth'
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w185'
-const TRAKT_API = 'https://api.trakt.tv'
-
-async function fetchTrakt<T>(
-  path: string,
-  clientId: string,
-): Promise<T> {
-  const res = await fetch(`${TRAKT_API}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'trakt-api-version': '2',
-      'trakt-api-key': clientId,
-    },
-  })
-  if (!res.ok) throw new Error(`Trakt: HTTP ${res.status}`)
-  return res.json() as Promise<T>
-}
 
 async function fetchTMDBDetail(
   tmdbId: number,
@@ -42,58 +27,71 @@ async function fetchTMDBDetail(
   }
 }
 
-interface TraktListEntry {
-  movie: TraktMovie
-  listed_at: string
+interface BackendTraktMovie {
+  movie: {
+    title: string
+    year: number
+    ids: {
+      trakt: number
+      slug: string
+      tmdb: number
+      imdb: string
+    }
+  }
 }
 
-export function useCrosswatch(
-  traktClientId: string,
-  traktUsername: string,
-  tmdbApiKey: string,
-) {
-  const [watchlistMovies, setWatchlistMovies] = useState<TraktListEntry[]>([])
-  const [watchedMovies, setWatchedMovies] = useState<TraktWatchedMovie[]>([])
+interface BackendTraktWatchedMovie {
+  plays: number
+  last_watched_at: string
+  movie: BackendTraktMovie['movie']
+}
+
+export function useCrosswatch(tmdbApiKey: string) {
+  const { auth } = useTraktAuth()
+  const [watchlistMovies, setWatchlistMovies] = useState<BackendTraktMovie[]>([])
+  const [watchedMovies, setWatchedMovies] = useState<BackendTraktWatchedMovie[]>([])
   const [tmdbCache, setTmdbCache] = useState<Record<number, TMDBMovieDetail>>({})
   const [loading, setLoading] = useState(false)
-  const [traktError, setTraktError] = useState<string | null>(null)
-  const [tmdbError, setTmdbError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<'watchlist' | 'watched'>('watchlist')
   const tmdbEnriching = useRef(false)
 
-  const hasTrakt = Boolean(traktClientId && traktUsername)
+  const hasTrakt = auth.connected
   const hasTmdb = Boolean(tmdbApiKey)
 
   const fetchTraktData = useCallback(async () => {
     if (!hasTrakt) return
     setLoading(true)
-    setTraktError(null)
+    setError(null)
     try {
-      const [wl, watched] = await Promise.all([
-        fetchTrakt<TraktListEntry[]>(
-          `/users/${traktUsername}/watchlist/movies`,
-          traktClientId,
-        ),
-        fetchTrakt<TraktWatchedMovie[]>(
-          `/users/${traktUsername}/watched/movies`,
-          traktClientId,
-        ),
+      const [wlRes, watchedRes] = await Promise.all([
+        fetch('/api/trakt/watchlist'),
+        fetch('/api/trakt/watched'),
       ])
+      if (!wlRes.ok || !watchedRes.ok) {
+        if (wlRes.status === 401 || watchedRes.status === 401) {
+          setError('Trakt session expired. Reconnect in Settings.')
+          return
+        }
+        throw new Error('Failed to fetch Trakt data')
+      }
+      const wl = await wlRes.json()
+      const watched = await watchedRes.json()
       setWatchlistMovies(wl)
       setWatchedMovies(watched)
     } catch (e) {
-      setTraktError(e instanceof Error ? e.message : 'Trakt fetch failed')
+      setError(e instanceof Error ? e.message : 'Trakt fetch failed')
     } finally {
       setLoading(false)
     }
-  }, [hasTrakt, traktClientId, traktUsername])
+  }, [hasTrakt])
 
   useEffect(() => {
     fetchTraktData()
   }, [fetchTraktData])
 
   const allTraktMovies = useMemo(() => {
-    const all: TraktMovie[] = [
+    const all = [
       ...watchlistMovies.map((e) => e.movie),
       ...watchedMovies.map((e) => e.movie),
     ]
@@ -110,7 +108,6 @@ export function useCrosswatch(
     if (!hasTmdb || loading || tmdbEnriching.current || allTraktMovies.length === 0) return
 
     tmdbEnriching.current = true
-    setTmdbError(null)
 
     const uncached = allTraktMovies.filter((m) => m.ids.tmdb && !tmdbCache[m.ids.tmdb])
     if (uncached.length === 0) {
@@ -161,11 +158,11 @@ export function useCrosswatch(
   }, [watchedMovies])
 
   const movies: CrosswatchMovie[] = useMemo(() => {
-    const movieList: TraktMovie[] =
+    const movieList =
       view === 'watchlist'
         ? watchlistMovies.map((e) => e.movie)
         : watchedMovies.map((e) => e.movie)
-    const unique = new Map<number, TraktMovie>()
+    const unique = new Map<number, BackendTraktMovie['movie']>()
     for (const m of movieList) {
       if (m.ids.tmdb && !unique.has(m.ids.tmdb)) {
         unique.set(m.ids.tmdb, m)
@@ -195,8 +192,7 @@ export function useCrosswatch(
   return {
     movies,
     loading,
-    traktError,
-    tmdbError,
+    error,
     hasTrakt,
     hasTmdb,
     view,

@@ -831,3 +831,124 @@ body {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+/* ===== Pin Button ===== */
+
+.pin-btn {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--color-muted);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.pin-btn--active {
+  color: var(--color-warn);
+  border-color: var(--color-warn);
+}
+
+/* ===== Range Selector ===== */
+
+.metrics-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.range-selector {
+  display: flex;
+  gap: 4px;
+}
+
+.range-selector__btn {
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text-dim);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.range-selector__btn--active {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* ===== Chart ===== */
+
+.chart-svg {
+  display: block;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* ===== Trakt Auth ===== */
+
+.trakt-connect-btn {
+  padding: 8px 20px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-bg);
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: opacity 0.15s;
+  min-height: 40px;
+}
+
+.trakt-connect-btn:active {
+  opacity: 0.8;
+}
+
+.trakt-connected-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 9px;
+  color: var(--color-text-dim);
+}
+
+.trakt-disconnect-btn {
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  color: var(--color-danger);
+  background: none;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.trakt-settings-connected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trakt-settings-status {
+  font-size: 10px;
+  color: var(--color-text-dim);
+}

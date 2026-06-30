@@ -1,5 +1,6 @@
 import { useSettings } from '../context/SettingsContext'
 import { useCrosswatch } from '../hooks/useCrosswatch'
+import { useTraktAuth } from '../hooks/useTraktAuth'
 
 function runtimeStr(min: number): string {
   if (min <= 0) return ''
@@ -10,11 +11,11 @@ function runtimeStr(min: number): string {
 
 export function CrosswatchWidget() {
   const { settings } = useSettings()
+  const { auth, login, logout } = useTraktAuth()
   const {
     movies,
     loading,
-    traktError,
-    tmdbError,
+    error,
     hasTrakt,
     hasTmdb,
     view,
@@ -22,11 +23,7 @@ export function CrosswatchWidget() {
     watchlistCount,
     watchedCount,
     posterUrl,
-  } = useCrosswatch(
-    settings.traktClientId,
-    settings.traktUsername,
-    settings.tmdbApiKey,
-  )
+  } = useCrosswatch(settings.tmdbApiKey)
 
   return (
     <div className="widget widget--crosswatch">
@@ -56,20 +53,24 @@ export function CrosswatchWidget() {
         <div className="widget__empty">
           <span className="widget__empty-icon">🎬</span>
           <span>
-            Configure <strong>Trakt</strong> (Client ID + Username) in Settings
-            to sync your watchlist & watched history.{' '}
-            {!hasTmdb && (
-              <>
-                Add a <strong>TMDB</strong> API key for posters & metadata.
-              </>
-            )}
+            Connect your <strong>Trakt</strong> account to sync watchlist & watched history.
           </span>
+          <button className="trakt-connect-btn" onClick={login} type="button">
+            Connect Trakt
+          </button>
         </div>
       )}
 
-      {(traktError || tmdbError) && (
-        <div className="error-banner">{traktError ?? tmdbError}</div>
+      {hasTrakt && (
+        <div className="trakt-connected-bar">
+          <span>Connected as <strong>{auth.username}</strong></span>
+          <button className="trakt-disconnect-btn" onClick={logout} type="button">
+            Disconnect
+          </button>
+        </div>
       )}
+
+      {error && <div className="error-banner">{error}</div>}
 
       {hasTrakt && loading && (
         <div className="crosswatch-skeleton">
@@ -79,7 +80,7 @@ export function CrosswatchWidget() {
         </div>
       )}
 
-      {hasTrakt && !loading && movies.length === 0 && !traktError && (
+      {hasTrakt && !loading && movies.length === 0 && !error && (
         <div className="widget__empty">
           <span>{view === 'watchlist' ? 'No movies on watchlist' : 'No watched movies yet'}</span>
         </div>
@@ -128,7 +129,7 @@ export function CrosswatchWidget() {
 
       {!loading && (
         <div className="crosswatch-apis-used">
-          {hasTrakt && <span>Trakt</span>}
+          {hasTrakt && <span>Trakt (backend)</span>}
           {hasTrakt && hasTmdb && <span>+</span>}
           {hasTmdb && <span>TMDB</span>}
         </div>

@@ -1,5 +1,6 @@
 import type { ContainerInfo, ContainerStats } from '../types'
 import { formatPercent, shortName, statusColor } from '../utils/format'
+import { useSettings } from '../context/SettingsContext'
 
 interface ContainerListProps {
   containers: ContainerInfo[]
@@ -8,6 +9,7 @@ interface ContainerListProps {
   error: string | null
   selectedId: string | null
   onSelect: (id: string) => void
+  showPin?: boolean
 }
 
 function findStats(stats: ContainerStats[], id: string): ContainerStats | undefined {
@@ -21,7 +23,10 @@ export function ContainerList({
   error,
   selectedId,
   onSelect,
+  showPin,
 }: ContainerListProps) {
+  const { settings, updateSettings } = useSettings()
+
   if (error) {
     return <div className="error-banner">{error}</div>
   }
@@ -45,26 +50,31 @@ export function ContainerList({
     )
   }
 
+  const pinned = settings.pinnedContainers
+
   return (
     <div className="container-list">
       {containers.map((c) => {
         const s = findStats(stats, c.id)
         const isSelected = selectedId === c.id
+        const isPinned = pinned.includes(c.id)
 
         return (
           <div
             key={c.id}
             className={`container-row${isSelected ? ' container-row--selected' : ''}`}
-            onClick={() => onSelect(c.id)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === 'Enter' && onSelect(c.id)}
           >
             <span
               className="container-row__dot"
               style={{ background: statusColor(c.state) }}
             />
-            <div className="container-row__info">
+            <div
+              className="container-row__info"
+              onClick={() => onSelect(c.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && onSelect(c.id)}
+            >
               <div className="container-row__name">{shortName(c.name, 22)}</div>
               <div className="container-row__meta">
                 {c.uptime || c.status}
@@ -87,6 +97,22 @@ export function ContainerList({
               >
                 ↗
               </a>
+            )}
+            {showPin && (
+              <button
+                className={`pin-btn${isPinned ? ' pin-btn--active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  const next = isPinned
+                    ? pinned.filter((id) => id !== c.id)
+                    : [...pinned, c.id]
+                  updateSettings({ pinnedContainers: next })
+                }}
+                type="button"
+                title={isPinned ? 'Unpin from home' : 'Pin to home'}
+              >
+                {isPinned ? '★' : '☆'}
+              </button>
             )}
           </div>
         )

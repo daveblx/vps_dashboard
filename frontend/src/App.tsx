@@ -54,10 +54,16 @@ export default function App() {
             containersLoading={loading}
             containersError={error}
             connectionLabel={connectionLabels[connection]}
+            connected={connection === 'connected'}
           />
         )}
 
-        {tab === 'metrics' && <HostMetricsView host={frame?.host ?? null} />}
+        {tab === 'metrics' && (
+          <HostMetricsView
+            host={frame?.host ?? null}
+            connected={connection === 'connected'}
+          />
+        )}
 
         {tab === 'containers' && (
           <ContainerList
@@ -67,6 +73,7 @@ export default function App() {
             error={error}
             selectedId={selectedContainerId}
             onSelect={handleSelectContainer}
+            showPin
           />
         )}
 

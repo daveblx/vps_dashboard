@@ -105,9 +105,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   customColors: null,
   pollIntervalMs: 10000,
   homeWidgets: ['metrics-summary', 'containers-summary', 'crosswatch'],
+  pinnedContainers: [],
   tmdbApiKey: '',
-  traktClientId: '',
-  traktUsername: '',
 }
 
 const STORAGE_KEY = 'vps-dashboard-settings'

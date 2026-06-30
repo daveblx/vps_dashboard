@@ -14,6 +14,7 @@ import (
 	"github.com/davidblachnitzky/oled-dashboard/internal/docker"
 	"github.com/davidblachnitzky/oled-dashboard/internal/host"
 	"github.com/davidblachnitzky/oled-dashboard/internal/server"
+	"github.com/davidblachnitzky/oled-dashboard/internal/trakt"
 )
 
 func main() {
@@ -54,6 +55,10 @@ func main() {
 	hostCollector := host.NewCollector()
 	hub := server.NewHub()
 
+	traktStore := trakt.NewStore(getEnv("TRAKT_TOKEN_PATH", "/tmp/trakt_tokens.json"))
+	traktOAuth := trakt.NewOAuthHandler(cfg.TraktClientID, cfg.TraktClientSecret, cfg.TraktRedirectURI, traktStore)
+	traktClient := trakt.NewClient(cfg.TraktClientID, traktStore, traktOAuth)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -65,7 +70,7 @@ func main() {
 	go broadcaster.Run(ctx)
 
 	authMW := auth.New(cfg)
-	srv := server.New(cfg, hub, hostCollector, dockerMonitor)
+	srv := server.New(cfg, hub, hostCollector, dockerMonitor, traktStore, traktOAuth, traktClient)
 	handler := srv.Router(authMW)
 
 	httpServer := &http.Server{
@@ -101,4 +106,11 @@ func main() {
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		slog.Error("shutdown error", "error", err)
 	}
+}
+
+func getEnv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }

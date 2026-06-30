@@ -76,9 +76,8 @@ export interface AppSettings {
   customColors: ThemeColors | null
   pollIntervalMs: number
   homeWidgets: string[]
+  pinnedContainers: string[]
   tmdbApiKey: string
-  traktClientId: string
-  traktUsername: string
 }
 
 export interface TraktMovie {
@@ -122,4 +121,20 @@ export interface CrosswatchMovie {
   watched: boolean
   watchedAt: string | null
   plays: number
+}
+
+export type MetricsTimeRange = '1m' | '1h' | '12h' | '24h'
+
+export interface MetricsSnapshot {
+  timestamp: number
+  cpu: number
+  memory: number
+  disk: number
+  netUp: number
+  netDown: number
+}
+
+export interface TraktAuthState {
+  connected: boolean
+  username: string
 }

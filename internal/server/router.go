@@ -13,6 +13,7 @@ import (
 	"github.com/davidblachnitzky/oled-dashboard/internal/config"
 	"github.com/davidblachnitzky/oled-dashboard/internal/docker"
 	"github.com/davidblachnitzky/oled-dashboard/internal/host"
+	"github.com/davidblachnitzky/oled-dashboard/internal/trakt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -23,14 +24,20 @@ type Server struct {
 	hub           *Hub
 	hostCollector *host.Collector
 	dockerMonitor *docker.Monitor
+	traktOAuth    *trakt.OAuthHandler
+	traktStore    *trakt.Store
+	traktClient   *trakt.Client
 }
 
-func New(cfg *config.Config, hub *Hub, hostCollector *host.Collector, dockerMonitor *docker.Monitor) *Server {
+func New(cfg *config.Config, hub *Hub, hostCollector *host.Collector, dockerMonitor *docker.Monitor, traktStore *trakt.Store, traktOAuth *trakt.OAuthHandler, traktClient *trakt.Client) *Server {
 	return &Server{
 		cfg:           cfg,
 		hub:           hub,
 		hostCollector: hostCollector,
 		dockerMonitor: dockerMonitor,
+		traktStore:    traktStore,
+		traktOAuth:    traktOAuth,
+		traktClient:   traktClient,
 	}
 }
 
@@ -42,7 +49,7 @@ func (s *Server) Router(authMW *auth.Middleware) http.Handler {
 	r.Use(middleware.Timeout(60 * time.Second))
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
-		AllowedMethods:   []string{"GET", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", s.cfg.AutheliaUserHeader, s.cfg.AutheliaGroupsHeader},
 		ExposedHeaders:   []string{s.cfg.AutheliaUserHeader, s.cfg.AutheliaGroupsHeader},
 		AllowCredentials: true,
@@ -51,6 +58,11 @@ func (s *Server) Router(authMW *auth.Middleware) http.Handler {
 
 	r.Get("/health", s.handleHealth)
 
+	r.Get("/api/auth/trakt/login", s.handleTraktLogin)
+	r.Get("/api/auth/trakt/callback", s.handleTraktCallback)
+	r.Get("/api/auth/trakt/me", s.handleTraktMe)
+	r.Post("/api/auth/trakt/logout", s.handleTraktLogout)
+
 	r.Group(func(r chi.Router) {
 		r.Use(authMW.Handler)
 
@@ -58,6 +70,8 @@ func (s *Server) Router(authMW *auth.Middleware) http.Handler {
 		r.Get("/api/containers/{id}/logs", s.handleContainerLogs)
 		r.Get("/api/metrics", s.handleMetricsSnapshot)
 		r.Get("/ws", s.hub.ServeWS)
+		r.Get("/api/trakt/watchlist", s.handleTraktWatchlist)
+		r.Get("/api/trakt/watched", s.handleTraktWatched)
 	})
 
 	r.Handle("/*", staticHandler())

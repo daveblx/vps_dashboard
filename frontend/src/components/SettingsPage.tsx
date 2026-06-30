@@ -1,7 +1,9 @@
 import { useSettings } from '../context/SettingsContext'
+import { useTraktAuth } from '../hooks/useTraktAuth'
 
 export function SettingsPage() {
   const { settings, presets, updateSettings } = useSettings()
+  const { auth, login, logout } = useTraktAuth()
 
   return (
     <div className="settings-page">
@@ -132,37 +134,38 @@ export function SettingsPage() {
       </section>
 
       <section className="settings-section">
-        <h2 className="settings-section__title">Crosswatch APIs</h2>
+        <h2 className="settings-section__title">Trakt Connection</h2>
+        {auth.connected ? (
+          <div className="trakt-settings-connected">
+            <span className="trakt-settings-status">
+              Connected as <strong>{auth.username}</strong>
+            </span>
+            <button
+              className="settings-btn settings-btn--danger"
+              onClick={logout}
+              type="button"
+            >
+              Disconnect Trakt
+            </button>
+          </div>
+        ) : (
+          <div className="widget__empty" style={{ padding: '10px 8px' }}>
+            <span>Connect your Trakt account to sync watchlist & history.</span>
+            <button className="trakt-connect-btn" onClick={login} type="button">
+              Connect Trakt
+            </button>
+          </div>
+        )}
+      </section>
+
+      <section className="settings-section">
+        <h2 className="settings-section__title">TMDB API Key</h2>
         <p className="settings-section__hint">
-          <strong>Trakt</strong> provides your watchlist & watched history.{' '}
-          <strong>TMDB</strong> provides movie metadata & posters.
+          Used for movie posters & metadata in the Crosswatch widget.{' '}
+          <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener noreferrer" className="link">
+            Get TMDB API key
+          </a>
         </p>
-
-        <label className="settings-row" style={{ marginBottom: 6 }}>
-          <span className="settings-row__label">Trakt Client ID</span>
-        </label>
-        <input
-          type="password"
-          className="settings-input"
-          placeholder="Trakt API Client ID"
-          value={settings.traktClientId}
-          onChange={(e) => updateSettings({ traktClientId: e.target.value })}
-        />
-
-        <label className="settings-row" style={{ marginTop: 6, marginBottom: 6 }}>
-          <span className="settings-row__label">Trakt Username</span>
-        </label>
-        <input
-          type="text"
-          className="settings-input"
-          placeholder="Your Trakt username"
-          value={settings.traktUsername}
-          onChange={(e) => updateSettings({ traktUsername: e.target.value })}
-        />
-
-        <label className="settings-row" style={{ marginTop: 6, marginBottom: 6 }}>
-          <span className="settings-row__label">TMDB API Key</span>
-        </label>
         <input
           type="password"
           className="settings-input"
@@ -170,11 +173,6 @@ export function SettingsPage() {
           value={settings.tmdbApiKey}
           onChange={(e) => updateSettings({ tmdbApiKey: e.target.value })}
         />
-        <p className="settings-section__hint">
-          <a href="https://trakt.tv/oauth/applications" target="_blank" rel="noopener noreferrer" className="link">Get Trakt Client ID</a>
-          {' · '}
-          <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener noreferrer" className="link">Get TMDB API key</a>
-        </p>
       </section>
 
       <section className="settings-section">
