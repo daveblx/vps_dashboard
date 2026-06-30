@@ -1,9 +1,37 @@
+import { useState } from 'react'
 import { useSettings } from '../context/SettingsContext'
 import { useTraktAuth } from '../hooks/useTraktAuth'
+import { useTraktConfig } from '../hooks/useTraktConfig'
+import { WIDGET_DEFS } from '../widgets'
 
 export function SettingsPage() {
   const { settings, presets, updateSettings } = useSettings()
   const { auth, login, logout } = useTraktAuth()
+  const { config: traktConfig, save: saveTraktConfig } = useTraktConfig()
+
+  const [clientId, setClientId] = useState('')
+  const [clientSecret, setClientSecret] = useState('')
+  const [savingTrakt, setSavingTrakt] = useState(false)
+  const [traktSaved, setTraktSaved] = useState(false)
+
+  // Sync the editable client id from backend config once loaded.
+  const effectiveClientId = clientId || traktConfig?.clientId || ''
+
+  const handleSaveTrakt = async () => {
+    setSavingTrakt(true)
+    setTraktSaved(false)
+    const ok = await saveTraktConfig(
+      effectiveClientId,
+      clientSecret,
+      traktConfig?.redirectUri ?? '',
+    )
+    setSavingTrakt(false)
+    if (ok) {
+      setTraktSaved(true)
+      setClientSecret('')
+      setTimeout(() => setTraktSaved(false), 2500)
+    }
+  }
 
   return (
     <div className="settings-page">
@@ -109,33 +137,111 @@ export function SettingsPage() {
 
       <section className="settings-section">
         <h2 className="settings-section__title">Home Widgets</h2>
-        <p className="settings-section__hint">Toggle widgets shown on the Home tab.</p>
+        <p className="settings-section__hint">
+          Toggle widgets here, or tap <strong>Edit</strong> on the Home tab to
+          drag, reorder and resize them.
+        </p>
         <div className="widget-toggles">
-          {([
-            ['metrics-summary', 'Metrics Summary'],
-            ['containers-summary', 'Containers Summary'],
-            ['crosswatch', 'Crosswatch Films'],
-          ] as const).map(([id, label]) => (
-            <label key={id} className="widget-toggle">
-              <input
-                type="checkbox"
-                checked={settings.homeWidgets.includes(id)}
-                onChange={(e) => {
-                  const next = e.target.checked
-                    ? [...settings.homeWidgets, id]
-                    : settings.homeWidgets.filter((w) => w !== id)
-                  updateSettings({ homeWidgets: next })
-                }}
-              />
-              <span>{label}</span>
-            </label>
-          ))}
+          {WIDGET_DEFS.map((def) => {
+            const enabled = settings.homeLayout.some((w) => w.id === def.id)
+            return (
+              <label key={def.id} className="widget-toggle">
+                <input
+                  type="checkbox"
+                  checked={enabled}
+                  onChange={(e) => {
+                    const next = e.target.checked
+                      ? [...settings.homeLayout, { id: def.id, span: def.defaultSpan }]
+                      : settings.homeLayout.filter((w) => w.id !== def.id)
+                    updateSettings({ homeLayout: next })
+                  }}
+                />
+                <span>{def.label}</span>
+              </label>
+            )
+          })}
         </div>
       </section>
 
       <section className="settings-section">
         <h2 className="settings-section__title">Trakt Connection</h2>
-        {auth.connected ? (
+
+        {!auth.connected && (
+          <div className="trakt-config">
+            <p className="settings-section__hint">
+              Create a Trakt API app, then paste its Client ID and Secret here.{' '}
+              <a
+                href="https://trakt.tv/oauth/applications/new"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="link"
+              >
+                Create Trakt app
+              </a>
+            </p>
+
+            {traktConfig?.redirectUri && (
+              <label className="settings-row settings-row--stacked">
+                <span className="settings-row__label">
+                  Redirect URI (add this to your Trakt app)
+                </span>
+                <input
+                  type="text"
+                  className="settings-input"
+                  value={traktConfig.redirectUri}
+                  readOnly
+                  onFocus={(e) => e.currentTarget.select()}
+                />
+              </label>
+            )}
+
+            <label className="settings-row settings-row--stacked">
+              <span className="settings-row__label">Client ID</span>
+              <input
+                type="text"
+                className="settings-input"
+                placeholder="Trakt Client ID"
+                value={effectiveClientId}
+                onChange={(e) => setClientId(e.target.value)}
+              />
+            </label>
+
+            <label className="settings-row settings-row--stacked">
+              <span className="settings-row__label">
+                Client Secret{traktConfig?.hasSecret ? ' (saved — leave blank to keep)' : ''}
+              </span>
+              <input
+                type="password"
+                className="settings-input"
+                placeholder={traktConfig?.hasSecret ? '••••••••' : 'Trakt Client Secret'}
+                value={clientSecret}
+                onChange={(e) => setClientSecret(e.target.value)}
+              />
+            </label>
+
+            <div className="trakt-config__actions">
+              <button
+                className="settings-btn"
+                onClick={handleSaveTrakt}
+                disabled={savingTrakt || !effectiveClientId}
+                type="button"
+              >
+                {savingTrakt ? 'Saving…' : traktSaved ? 'Saved ✓' : 'Save Trakt App'}
+              </button>
+              <button
+                className="trakt-connect-btn"
+                onClick={login}
+                disabled={!traktConfig?.configured}
+                type="button"
+                title={traktConfig?.configured ? '' : 'Save your Client ID & Secret first'}
+              >
+                Connect Trakt
+              </button>
+            </div>
+          </div>
+        )}
+
+        {auth.connected && (
           <div className="trakt-settings-connected">
             <span className="trakt-settings-status">
               Connected as <strong>{auth.username}</strong>
@@ -146,13 +252,6 @@ export function SettingsPage() {
               type="button"
             >
               Disconnect Trakt
-            </button>
-          </div>
-        ) : (
-          <div className="widget__empty" style={{ padding: '10px 8px' }}>
-            <span>Connect your Trakt account to sync watchlist & history.</span>
-            <button className="trakt-connect-btn" onClick={login} type="button">
-              Connect Trakt
             </button>
           </div>
         )}

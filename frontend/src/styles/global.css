@@ -429,9 +429,186 @@ body {
 }
 
 .home-widgets {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.app--wide .home-widgets {
+  grid-template-columns: 1fr 1fr;
+}
+
+.home-widget {
+  min-width: 0;
+}
+
+.app--wide .home-widget--span2 {
+  grid-column: span 2;
+}
+
+.home-widget__body {
+  min-width: 0;
+}
+
+.home-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.home-edit-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.home-edit-btn:hover {
+  color: var(--color-text);
+}
+
+.home-edit-btn--active {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.home-widgets--editing .home-widget {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 6px;
+  cursor: grab;
+  transition: border-color 0.15s, opacity 0.15s;
+}
+
+.home-widgets--editing .home-widget:hover {
+  border-color: var(--color-accent);
+}
+
+.home-widget--dragging {
+  opacity: 0.4;
+}
+
+.home-widget__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.home-widget__handle {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-widget__controls {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.home-widget__btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  min-width: 24px;
+  height: 24px;
+  color: var(--color-text-dim);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.home-widget__btn:hover:not(:disabled) {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.home-widget__btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.home-widget__btn--danger:hover:not(:disabled) {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.home-palette {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px;
+}
+
+.home-palette__title {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  margin-bottom: 8px;
+}
+
+.home-palette__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.home-palette__item {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.home-palette__item:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* Trakt config form */
+.trakt-config {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+}
+
+.settings-row--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.trakt-config__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.trakt-connect-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .widget {

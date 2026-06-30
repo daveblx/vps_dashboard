@@ -71,11 +71,17 @@ export interface ThemePreset {
   colors: ThemeColors
 }
 
+export interface HomeWidgetLayout {
+  id: string
+  span: 1 | 2
+}
+
 export interface AppSettings {
   theme: string
   customColors: ThemeColors | null
   pollIntervalMs: number
   homeWidgets: string[]
+  homeLayout: HomeWidgetLayout[]
   pinnedContainers: string[]
   tmdbApiKey: string
 }

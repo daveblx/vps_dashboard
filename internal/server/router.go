@@ -27,9 +27,10 @@ type Server struct {
 	traktOAuth    *trakt.OAuthHandler
 	traktStore    *trakt.Store
 	traktClient   *trakt.Client
+	traktCreds    *trakt.CredentialStore
 }
 
-func New(cfg *config.Config, hub *Hub, hostCollector *host.Collector, dockerMonitor *docker.Monitor, traktStore *trakt.Store, traktOAuth *trakt.OAuthHandler, traktClient *trakt.Client) *Server {
+func New(cfg *config.Config, hub *Hub, hostCollector *host.Collector, dockerMonitor *docker.Monitor, traktStore *trakt.Store, traktOAuth *trakt.OAuthHandler, traktClient *trakt.Client, traktCreds *trakt.CredentialStore) *Server {
 	return &Server{
 		cfg:           cfg,
 		hub:           hub,
@@ -38,6 +39,7 @@ func New(cfg *config.Config, hub *Hub, hostCollector *host.Collector, dockerMoni
 		traktStore:    traktStore,
 		traktOAuth:    traktOAuth,
 		traktClient:   traktClient,
+		traktCreds:    traktCreds,
 	}
 }
 
@@ -69,7 +71,10 @@ func (s *Server) Router(authMW *auth.Middleware) http.Handler {
 		r.Get("/api/containers", s.handleListContainers)
 		r.Get("/api/containers/{id}/logs", s.handleContainerLogs)
 		r.Get("/api/metrics", s.handleMetricsSnapshot)
+		r.Get("/api/metrics/history", s.handleMetricsHistory)
 		r.Get("/ws", s.hub.ServeWS)
+		r.Get("/api/trakt/config", s.handleTraktConfigGet)
+		r.Post("/api/trakt/config", s.handleTraktConfigSave)
 		r.Get("/api/trakt/watchlist", s.handleTraktWatchlist)
 		r.Get("/api/trakt/watched", s.handleTraktWatched)
 	})
@@ -117,6 +122,34 @@ func (s *Server) handleMetricsSnapshot(w http.ResponseWriter, r *http.Request) {
 		Host:       hostMetrics,
 		Containers: containerStats,
 	})
+}
+
+func (s *Server) handleMetricsHistory(w http.ResponseWriter, r *http.Request) {
+	rangeDur, maxPoints := parseHistoryRange(r.URL.Query().Get("range"))
+
+	points := s.hostCollector.History().Range(rangeDur, maxPoints)
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"range":  r.URL.Query().Get("range"),
+		"points": points,
+	})
+}
+
+// parseHistoryRange maps a range label to a duration and a target point count.
+func parseHistoryRange(label string) (time.Duration, int) {
+	switch label {
+	case "1m":
+		return time.Minute, 60
+	case "12h":
+		return 12 * time.Hour, 180
+	case "24h":
+		return 24 * time.Hour, 240
+	case "1h":
+		fallthrough
+	default:
+		return time.Hour, 120
+	}
 }
 
 func (s *Server) handleContainerLogs(w http.ResponseWriter, r *http.Request) {

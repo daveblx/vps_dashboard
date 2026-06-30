@@ -21,25 +21,21 @@ const (
 )
 
 type OAuthHandler struct {
-	clientID     string
-	clientSecret string
-	redirectURI  string
-	store        *Store
-	httpClient   *http.Client
+	creds      *CredentialStore
+	store      *Store
+	httpClient *http.Client
 }
 
-func NewOAuthHandler(clientID, clientSecret, redirectURI string, store *Store) *OAuthHandler {
+func NewOAuthHandler(creds *CredentialStore, store *Store) *OAuthHandler {
 	return &OAuthHandler{
-		clientID:     clientID,
-		clientSecret: clientSecret,
-		redirectURI:  redirectURI,
-		store:        store,
-		httpClient:   &http.Client{Timeout: 30 * time.Second},
+		creds:      creds,
+		store:      store,
+		httpClient: &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
 func (h *OAuthHandler) IsConfigured() bool {
-	return h.clientID != "" && h.clientSecret != "" && h.redirectURI != ""
+	return h.creds.Get().Configured()
 }
 
 type tokenReq struct {
@@ -66,9 +62,9 @@ type userSettingsResp struct {
 	} `json:"user"`
 }
 
-func (h *OAuthHandler) BuildAuthURL(state string) string {
+func (h *OAuthHandler) BuildAuthURL(state, redirectURI string) string {
 	return fmt.Sprintf("%s?response_type=code&client_id=%s&redirect_uri=%s&state=%s",
-		traktAuthURL, url.QueryEscape(h.clientID), url.QueryEscape(h.redirectURI), url.QueryEscape(state))
+		traktAuthURL, url.QueryEscape(h.creds.Get().ClientID), url.QueryEscape(redirectURI), url.QueryEscape(state))
 }
 
 func GenerateState() (string, error) {
@@ -79,12 +75,13 @@ func GenerateState() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-func (h *OAuthHandler) ExchangeCode(code string) error {
+func (h *OAuthHandler) ExchangeCode(code, redirectURI string) error {
+	creds := h.creds.Get()
 	body := tokenReq{
 		Code:         code,
-		ClientID:     h.clientID,
-		ClientSecret: h.clientSecret,
-		RedirectURI:  h.redirectURI,
+		ClientID:     creds.ClientID,
+		ClientSecret: creds.ClientSecret,
+		RedirectURI:  redirectURI,
 		GrantType:    "authorization_code",
 	}
 
@@ -92,6 +89,9 @@ func (h *OAuthHandler) ExchangeCode(code string) error {
 	if err != nil {
 		return err
 	}
+
+	// Persist the redirect URI actually used so refreshes match it.
+	h.creds.SetRedirectURI(redirectURI)
 
 	username, _ := h.fetchUsername(tokens.AccessToken)
 
@@ -112,10 +112,11 @@ func (h *OAuthHandler) RefreshTokens() error {
 		return fmt.Errorf("no refresh token available")
 	}
 
+	creds := h.creds.Get()
 	body := tokenReq{
-		ClientID:     h.clientID,
-		ClientSecret: h.clientSecret,
-		RedirectURI:  h.redirectURI,
+		ClientID:     creds.ClientID,
+		ClientSecret: creds.ClientSecret,
+		RedirectURI:  creds.RedirectURI,
 		GrantType:    "refresh_token",
 		RefreshToken: t.RefreshToken,
 	}
@@ -187,7 +188,7 @@ func (h *OAuthHandler) fetchUsername(accessToken string) (string, error) {
 	req, _ := http.NewRequest(http.MethodGet, traktAPI+"/users/settings", nil)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("trakt-api-version", "2")
-	req.Header.Set("trakt-api-key", h.clientID)
+	req.Header.Set("trakt-api-key", h.creds.Get().ClientID)
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	resp, err := h.httpClient.Do(req)

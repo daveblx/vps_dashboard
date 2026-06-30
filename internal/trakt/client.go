@@ -10,18 +10,18 @@ import (
 )
 
 type Client struct {
-	clientID string
-	store    *Store
-	oauth    *OAuthHandler
-	http     *http.Client
+	creds *CredentialStore
+	store *Store
+	oauth *OAuthHandler
+	http  *http.Client
 }
 
-func NewClient(clientID string, store *Store, oauth *OAuthHandler) *Client {
+func NewClient(creds *CredentialStore, store *Store, oauth *OAuthHandler) *Client {
 	return &Client{
-		clientID: clientID,
-		store:    store,
-		oauth:    oauth,
-		http:     &http.Client{Timeout: 30 * time.Second},
+		creds: creds,
+		store: store,
+		oauth: oauth,
+		http:  &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -37,7 +37,7 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("trakt-api-version", "2")
-	req.Header.Set("trakt-api-key", c.clientID)
+	req.Header.Set("trakt-api-key", c.creds.Get().ClientID)
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	return c.http.Do(req)

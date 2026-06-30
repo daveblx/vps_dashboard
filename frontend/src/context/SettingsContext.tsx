@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { AppSettings, ThemeColors, ThemePreset } from '../types'
+import { DEFAULT_HOME_LAYOUT, layoutFromWidgetIds } from '../widgets'
 
 const PRESETS: ThemePreset[] = [
   {
@@ -105,6 +106,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   customColors: null,
   pollIntervalMs: 10000,
   homeWidgets: ['metrics-summary', 'containers-summary', 'crosswatch'],
+  homeLayout: DEFAULT_HOME_LAYOUT,
   pinnedContainers: [],
   tmdbApiKey: '',
 }
@@ -114,7 +116,17 @@ const STORAGE_KEY = 'vps-dashboard-settings'
 function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) }
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<AppSettings>
+      const merged = { ...DEFAULT_SETTINGS, ...parsed }
+      // Migrate legacy installs that only stored the on/off widget list.
+      if (!Array.isArray(parsed.homeLayout) || parsed.homeLayout.length === 0) {
+        merged.homeLayout = Array.isArray(parsed.homeWidgets)
+          ? layoutFromWidgetIds(parsed.homeWidgets)
+          : DEFAULT_HOME_LAYOUT
+      }
+      return merged
+    }
   } catch { /* ignore */ }
   return DEFAULT_SETTINGS
 }

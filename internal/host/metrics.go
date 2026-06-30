@@ -42,10 +42,18 @@ type Collector struct {
 	prevNetRecv uint64
 	prevTime    time.Time
 	hasPrevNet  bool
+	history     *History
 }
 
 func NewCollector() *Collector {
-	return &Collector{}
+	return &Collector{
+		history: NewHistory(24*time.Hour, 50000),
+	}
+}
+
+// History exposes the rolling metrics history buffer.
+func (c *Collector) History() *History {
+	return c.history
 }
 
 func (c *Collector) Latest() Metrics {
@@ -139,7 +147,10 @@ func (c *Collector) Run(ctx context.Context, interval time.Duration) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			_, _ = c.Collect(ctx)
+			m, err := c.Collect(ctx)
+			if err == nil && c.history != nil {
+				c.history.Record(m)
+			}
 		}
 	}
 }

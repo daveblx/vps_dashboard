@@ -56,8 +56,16 @@ func main() {
 	hub := server.NewHub()
 
 	traktStore := trakt.NewStore(getEnv("TRAKT_TOKEN_PATH", "/tmp/trakt_tokens.json"))
-	traktOAuth := trakt.NewOAuthHandler(cfg.TraktClientID, cfg.TraktClientSecret, cfg.TraktRedirectURI, traktStore)
-	traktClient := trakt.NewClient(cfg.TraktClientID, traktStore, traktOAuth)
+	traktCreds := trakt.NewCredentialStore(
+		getEnv("TRAKT_CREDENTIALS_PATH", "/tmp/trakt_credentials.json"),
+		trakt.Credentials{
+			ClientID:     cfg.TraktClientID,
+			ClientSecret: cfg.TraktClientSecret,
+			RedirectURI:  cfg.TraktRedirectURI,
+		},
+	)
+	traktOAuth := trakt.NewOAuthHandler(traktCreds, traktStore)
+	traktClient := trakt.NewClient(traktCreds, traktStore, traktOAuth)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -70,7 +78,7 @@ func main() {
 	go broadcaster.Run(ctx)
 
 	authMW := auth.New(cfg)
-	srv := server.New(cfg, hub, hostCollector, dockerMonitor, traktStore, traktOAuth, traktClient)
+	srv := server.New(cfg, hub, hostCollector, dockerMonitor, traktStore, traktOAuth, traktClient, traktCreds)
 	handler := srv.Router(authMW)
 
 	httpServer := &http.Server{

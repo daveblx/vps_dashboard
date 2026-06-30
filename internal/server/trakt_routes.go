@@ -4,12 +4,30 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/davidblachnitzky/oled-dashboard/internal/trakt"
 )
 
 const traktStateCookie = "trakt_oauth_state"
+
+// effectiveRedirect returns the configured redirect URI, or derives one from
+// the incoming request (honouring reverse-proxy forwarded headers).
+func (s *Server) effectiveRedirect(r *http.Request) string {
+	if c := s.traktCreds.Get(); c.RedirectURI != "" {
+		return c.RedirectURI
+	}
+	scheme := "http"
+	if r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
+		scheme = "https"
+	}
+	host := r.Host
+	if fwd := r.Header.Get("X-Forwarded-Host"); fwd != "" {
+		host = fwd
+	}
+	return scheme + "://" + host + "/api/auth/trakt/callback"
+}
 
 func (s *Server) handleTraktLogin(w http.ResponseWriter, r *http.Request) {
 	if s.traktOAuth == nil || !s.traktOAuth.IsConfigured() {
@@ -34,7 +52,7 @@ func (s *Server) handleTraktLogin(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   600,
 	})
 
-	http.Redirect(w, r, s.traktOAuth.BuildAuthURL(state), http.StatusFound)
+	http.Redirect(w, r, s.traktOAuth.BuildAuthURL(state, s.effectiveRedirect(r)), http.StatusFound)
 }
 
 func (s *Server) handleTraktCallback(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +71,7 @@ func (s *Server) handleTraktCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.traktOAuth.ExchangeCode(code); err != nil {
+	if err := s.traktOAuth.ExchangeCode(code, s.effectiveRedirect(r)); err != nil {
 		slog.Error("trakt code exchange failed", "error", err)
 		http.Redirect(w, r, "/?trakt_error=1", http.StatusFound)
 		return
@@ -104,6 +122,56 @@ func (s *Server) handleTraktLogout(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+// handleTraktConfigGet returns the current (non-secret) Trakt app config plus
+// the redirect URI the backend will use, so the UI can show what to register.
+func (s *Server) handleTraktConfigGet(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if s.traktCreds == nil {
+		_ = json.NewEncoder(w).Encode(map[string]any{"configured": false})
+		return
+	}
+	c := s.traktCreds.Get()
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"clientId":    c.ClientID,
+		"hasSecret":   c.ClientSecret != "",
+		"redirectUri": s.effectiveRedirect(r),
+		"configured":  c.Configured(),
+	})
+}
+
+// handleTraktConfigSave persists Trakt credentials supplied from the UI.
+func (s *Server) handleTraktConfigSave(w http.ResponseWriter, r *http.Request) {
+	if s.traktCreds == nil {
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	var body struct {
+		ClientID     string `json:"clientId"`
+		ClientSecret string `json:"clientSecret"`
+		RedirectURI  string `json:"redirectUri"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+
+	s.traktCreds.Update(trakt.Credentials{
+		ClientID:     body.ClientID,
+		ClientSecret: body.ClientSecret,
+		RedirectURI:  body.RedirectURI,
+	})
+
+	c := s.traktCreds.Get()
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"clientId":    c.ClientID,
+		"hasSecret":   c.ClientSecret != "",
+		"redirectUri": s.effectiveRedirect(r),
+		"configured":  c.Configured(),
+	})
 }
 
 func (s *Server) handleTraktWatchlist(w http.ResponseWriter, r *http.Request) {

@@ -10,7 +10,6 @@ import {
 } from './MetricsChart'
 import { useMetricsHistory } from '../hooks/useMetricsHistory'
 import { clamp, formatBytes, formatBytesPerSec, formatPercent } from '../utils/format'
-import { useRef } from 'react'
 
 interface HostMetricsViewProps {
   host: HostMetrics | null
@@ -25,23 +24,11 @@ function barClass(percent: number): string {
 }
 
 export function HostMetricsView({ host, connected, compact }: HostMetricsViewProps) {
-  const prevNet = useRef({ up: 0, down: 0, ts: Date.now() })
-
   const cpuRaw = host ? clamp(host.cpuPercent, 0, 100) : 0
   const memRaw = host ? clamp(host.memoryPercent, 0, 100) : 0
   const diskRaw = host ? clamp(host.disk.usedPercent, 0, 100) : 0
-
-  let netUp = 0
-  let netDown = 0
-  if (host) {
-    const now = Date.now()
-    const dt = (now - prevNet.current.ts) / 1000
-    if (dt > 0) {
-      netUp = clamp((host.network.bytesSentPerSec) / 1024, 0, 10000)
-      netDown = clamp((host.network.bytesRecvPerSec) / 1024, 0, 10000)
-    }
-    prevNet.current = { up: host.network.bytesSentPerSec, down: host.network.bytesRecvPerSec, ts: now }
-  }
+  const netUp = host ? host.network.bytesSentPerSec : 0
+  const netDown = host ? host.network.bytesRecvPerSec : 0
 
   const { visible, range, setRange } = useMetricsHistory(
     cpuRaw,
