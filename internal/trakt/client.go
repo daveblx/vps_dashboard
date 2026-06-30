@@ -39,7 +39,8 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 	req.Header.Set("trakt-api-version", "2")
 	req.Header.Set("trakt-api-key", c.creds.Get().ClientID)
 	req.Header.Set("Authorization", "Bearer "+token)
-	slog.Info("trakt outgoing request", "method", req.Method, "url", req.URL.String())
+	req.Header.Set("User-Agent", "YourAppName/1.0 (+https://yourdomain.com)")
+	//slog.Info("trakt outgoing request", "method", req.Method, "url", req.URL.String())
 	return c.http.Do(req)
 }
 
