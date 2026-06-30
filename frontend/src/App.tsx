@@ -33,7 +33,7 @@ export default function App() {
     setTab('logs')
   }, [])
 
-  const connectionLabels: Record<string, string> = {
+  const connectionLabels: Record<ConnectionState, string> = {
     connected: 'LIVE',
     connecting: 'SYNC',
     disconnected: 'OFFLINE',
