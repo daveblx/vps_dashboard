@@ -1,6 +1,6 @@
 # VPS Dashboard
 
-A clean real-time dashboard for monitoring your VPS and Docker containers.
+A dashboard for monitoring your VPS and Docker containers.
 
 Designed for speed and a lightweight footprint, it features a concurrent Go backend paired with a snappy React/Vite frontend. It securely hooks into your host's system metrics and the Docker daemon, while remaining fully decoupled from container lifecycle mutations.
 
