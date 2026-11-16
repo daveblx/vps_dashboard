@@ -119,8 +119,10 @@ function loadSettings(): AppSettings {
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<AppSettings>
       const merged = { ...DEFAULT_SETTINGS, ...parsed }
-      // Migrate legacy installs that only stored the on/off widget list.
-      if (!Array.isArray(parsed.homeLayout) || parsed.homeLayout.length === 0) {
+      // Migrate legacy installs that only stored the on/off widget list. An
+      // empty layout is a valid choice (no widgets), so only migrate when the
+      // key is missing entirely.
+      if (!Array.isArray(parsed.homeLayout)) {
         merged.homeLayout = Array.isArray(parsed.homeWidgets)
           ? layoutFromWidgetIds(parsed.homeWidgets)
           : DEFAULT_HOME_LAYOUT
@@ -137,6 +139,22 @@ function saveSettings(settings: AppSettings) {
   } catch { /* ignore */ }
 }
 
+function parseHex(hex: string): [number, number, number] | null {
+  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!match) return null
+  const value = parseInt(match[1], 16)
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255]
+}
+
+/** Blends `to` into `from` so hover shades follow the active theme. */
+function mixHex(from: string, to: string, amount: number): string {
+  const a = parseHex(from)
+  const b = parseHex(to)
+  if (!a || !b) return from
+  const channel = (i: number) => Math.round(a[i] + (b[i] - a[i]) * amount)
+  return `#${[0, 1, 2].map((i) => channel(i).toString(16).padStart(2, '0')).join('')}`
+}
+
 function applyColors(colors: ThemeColors) {
   const root = document.documentElement
   root.style.setProperty('--color-bg', colors.bg)
@@ -149,6 +167,10 @@ function applyColors(colors: ThemeColors) {
   root.style.setProperty('--color-warn', colors.warn)
   root.style.setProperty('--color-danger', colors.danger)
   root.style.setProperty('--color-muted', colors.muted)
+  // Derived shades: without these, hover states keep the dark defaults and
+  // become unreadable on light themes.
+  root.style.setProperty('--color-surface-hi', mixHex(colors.surface, colors.text, 0.07))
+  root.style.setProperty('--color-border-hi', mixHex(colors.border, colors.text, 0.18))
 }
 
 function resolveColors(settings: AppSettings): ThemeColors {

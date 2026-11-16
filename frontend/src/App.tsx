@@ -9,6 +9,7 @@ import { StatusBar } from './components/StatusBar'
 import { useSettings } from './context/SettingsContext'
 import { useContainers } from './hooks/useContainers'
 import { useLogStream } from './hooks/useLogStream'
+import { useMediaQuery } from './hooks/useMediaQuery'
 import { useMetricsSocket } from './hooks/useMetricsSocket'
 import type { ConnectionState, TabId } from './types'
 
@@ -39,13 +40,13 @@ export default function App() {
     disconnected: 'OFFLINE',
   }
 
-  const isWide = typeof window !== 'undefined' && window.innerWidth >= 768
+  const isWide = useMediaQuery('(min-width: 768px)')
 
   return (
     <div className={`app${isWide ? ' app--wide' : ''}`}>
       <StatusBar connection={connection} />
 
-      <main className="main">
+      <main className={`main${tab === 'logs' ? ' main--logs' : ''}`}>
         {tab === 'home' && (
           <HomePage
             host={frame?.host ?? null}

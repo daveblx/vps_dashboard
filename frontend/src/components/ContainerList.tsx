@@ -75,7 +75,7 @@ export function ContainerList({
               tabIndex={0}
               onKeyDown={(e) => e.key === 'Enter' && onSelect(c.id)}
             >
-              <div className="container-row__name">{shortName(c.name, 22)}</div>
+              <div className="container-row__name" title={c.name}>{shortName(c.name, 22)}</div>
               <div className="container-row__meta">
                 {c.uptime || c.status}
               </div>

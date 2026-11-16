@@ -136,6 +136,9 @@ export function useCrosswatch(tmdbApiKey: string) {
 
     return () => {
       cancelled = true
+      // Release the guard: a cancelled batch never reaches its own reset, which
+      // would otherwise stall enrichment until some other dependency changes.
+      tmdbEnriching.current = false
     }
   }, [hasTmdb, loading, allTraktMovies, tmdbApiKey, tmdbCache])
 

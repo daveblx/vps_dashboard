@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { HostMetrics } from '../types'
 import {
   chartCpu,
@@ -39,6 +40,14 @@ export function HostMetricsView({ host, connected, compact }: HostMetricsViewPro
     connected,
   )
 
+  // Derive the series once per data change instead of on every render, so the
+  // chart's own memo actually hits.
+  const cpuSeries = useMemo(() => chartCpu(visible), [visible])
+  const memSeries = useMemo(() => chartMemory(visible), [visible])
+  const diskSeries = useMemo(() => chartDisk(visible), [visible])
+  const netUpSeries = useMemo(() => chartNetUp(visible), [visible])
+  const netDownSeries = useMemo(() => chartNetDown(visible), [visible])
+
   if (!host) {
     return (
       <div className="metrics-grid">
@@ -66,8 +75,8 @@ export function HostMetricsView({ host, connected, compact }: HostMetricsViewPro
           <div className="bar">
             <div className={`bar__fill ${barClass(cpu)}`} style={{ width: `${cpu}%` }} />
           </div>
-          <div style={{ marginTop: 4 }}>
-            <MetricsChart data={chartCpu(visible)} color="var(--color-accent)" height={chartH} compact={compact} label="cpu" />
+          <div className="metric-card__chart">
+            <MetricsChart data={cpuSeries} color="var(--color-accent)" height={chartH} compact={compact} label="cpu" />
           </div>
         </div>
 
@@ -80,8 +89,8 @@ export function HostMetricsView({ host, connected, compact }: HostMetricsViewPro
           <div className="bar">
             <div className={`bar__fill ${barClass(mem)}`} style={{ width: `${mem}%` }} />
           </div>
-          <div style={{ marginTop: 4 }}>
-            <MetricsChart data={chartMemory(visible)} color="var(--color-warn)" height={chartH} compact={compact} label="mem" />
+          <div className="metric-card__chart">
+            <MetricsChart data={memSeries} color="var(--color-warn)" height={chartH} compact={compact} label="mem" />
           </div>
         </div>
 
@@ -94,8 +103,8 @@ export function HostMetricsView({ host, connected, compact }: HostMetricsViewPro
           <div className="bar">
             <div className={`bar__fill ${barClass(disk)}`} style={{ width: `${disk}%` }} />
           </div>
-          <div style={{ marginTop: 4 }}>
-            <MetricsChart data={chartDisk(visible)} color="var(--color-ok)" height={chartH} compact={compact} label="disk" />
+          <div className="metric-card__chart">
+            <MetricsChart data={diskSeries} color="var(--color-ok)" height={chartH} compact={compact} label="disk" />
           </div>
         </div>
 
@@ -105,16 +114,16 @@ export function HostMetricsView({ host, connected, compact }: HostMetricsViewPro
             <span className="up">↑ {formatBytesPerSec(host.network.bytesSentPerSec)}</span>
             <span className="down">↓ {formatBytesPerSec(host.network.bytesRecvPerSec)}</span>
           </div>
-          <div className="metric-card__sub" style={{ marginTop: 4 }}>
+          <div className="metric-card__sub metric-card__sub--spaced">
             Σ ↑{formatBytes(host.network.totalBytesSent)} ↓{formatBytes(host.network.totalBytesRecv)}
           </div>
           {visible.length > 1 && (
-            <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-              <div style={{ flex: 1 }}>
-                <MetricsChart data={chartNetDown(visible)} color="var(--color-text-dim)" height={chartH} compact label="netDown" />
+            <div className="metric-card__chart metric-card__chart--pair">
+              <div className="metric-card__chart-half">
+                <MetricsChart data={netDownSeries} color="var(--color-text-dim)" height={chartH} compact label="netDown" />
               </div>
-              <div style={{ flex: 1 }}>
-                <MetricsChart data={chartNetUp(visible)} color="var(--color-accent)" height={chartH} compact label="netUp" />
+              <div className="metric-card__chart-half">
+                <MetricsChart data={netUpSeries} color="var(--color-accent)" height={chartH} compact label="netUp" />
               </div>
             </div>
           )}

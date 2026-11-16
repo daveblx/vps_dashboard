@@ -14,7 +14,7 @@ export function StatusBar({ connection }: StatusBarProps) {
   return (
     <header className="header">
       <span className="header__title">VPS Dashboard</span>
-      <div className="header__status">
+      <div className="header__status" role="status" aria-live="polite">
         <span className={`status-dot status-dot--${connection}`} />
         <span>{labels[connection]}</span>
       </div>

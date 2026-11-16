@@ -9,18 +9,54 @@ interface ChartProps {
   label?: string
 }
 
-function svgPath(points: number[], w: number, h: number, padBottom: number): string {
-  if (points.length < 2) return ''
-  const plotH = h - padBottom
-  const max = Math.max(...points, 1)
-  const step = w / (points.length - 1)
-  let d = `M 0,${plotH - (points[0] / max) * plotH}`
-  for (let i = 1; i < points.length; i++) {
-    const x = i * step
-    const y = plotH - (points[i] / max) * plotH
-    d += ` L ${x},${y}`
+const MAX_POINTS = 200
+
+/**
+ * The chart viewBox is 200 units wide, so anything beyond that is invisible
+ * detail. Bucketing by peak keeps spikes while cutting the path string (and the
+ * per-frame work) by an order of magnitude on 12h/24h ranges.
+ */
+function downsample(points: number[], max: number): number[] {
+  if (points.length <= max) return points
+  const bucket = points.length / max
+  const out: number[] = []
+  for (let i = 0; i < max; i++) {
+    const start = Math.floor(i * bucket)
+    const end = Math.min(points.length, Math.floor((i + 1) * bucket))
+    let peak = points[start]
+    for (let j = start + 1; j < end; j++) {
+      if (points[j] > peak) peak = points[j]
+    }
+    out.push(peak)
   }
-  return d
+  return out
+}
+
+function svgPath(
+  points: number[],
+  w: number,
+  h: number,
+  padBottom: number,
+): { d: string; flat: boolean } {
+  if (points.length < 2) return { d: '', flat: false }
+  const plotH = h - padBottom
+  let max = 0
+  let min = Infinity
+  for (let i = 0; i < points.length; i++) {
+    if (points[i] > max) max = points[i]
+    if (points[i] < min) min = points[i]
+  }
+  // A constant series (disk usage, idle network) would otherwise collapse onto
+  // the top edge and read as an empty chart.
+  const flat = max - min < 0.5
+  const scale = flat ? 0 : plotH / (max * 1.05)
+  const yFor = (value: number) => (flat ? plotH * 0.5 : plotH - value * scale)
+  const step = w / (points.length - 1)
+  let d = `M 0,${yFor(points[0])}`
+  for (let i = 1; i < points.length; i++) {
+    d += ` L ${i * step},${yFor(points[i])}`
+  }
+  return { d, flat }
 }
 
 function shimmerPath(w: number, h: number): string {
@@ -36,7 +72,10 @@ function shimmerPath(w: number, h: number): string {
 }
 
 export function MetricsChart({ data, color, height, compact, label }: ChartProps) {
-  const path = useMemo(() => svgPath(data, 200, height, compact ? 2 : 6), [data, height, compact])
+  const { d: path, flat } = useMemo(
+    () => svgPath(downsample(data, MAX_POINTS), 200, height, compact ? 2 : 6),
+    [data, height, compact],
+  )
 
   if (data.length === 0) {
     return (
@@ -66,7 +105,7 @@ export function MetricsChart({ data, color, height, compact, label }: ChartProps
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {!compact && (
+      {!compact && !flat && (
         <path
           d={`${path} L 200,${height - 2} L 0,${height - 2} Z`}
           fill={`url(#grad-${label ?? 'chart'})`}

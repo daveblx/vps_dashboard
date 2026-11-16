@@ -9,7 +9,9 @@
 :root {
   --color-bg: #000000;
   --color-surface: #0a0a0a;
+  --color-surface-hi: #101010;
   --color-border: #1a1a1a;
+  --color-border-hi: #2a2a2a;
   --color-text: #c8ffc8;
   --color-text-dim: #5a8a5a;
   --color-accent: #00ff66;
@@ -22,6 +24,7 @@
   --header-height: 40px;
   --radius: 4px;
   --gap: 8px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 html,
@@ -43,6 +46,16 @@ body {
   user-select: none;
 }
 
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
 .app {
   display: flex;
   flex-direction: column;
@@ -62,13 +75,28 @@ body {
 }
 
 .header {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: var(--header-height);
   padding: 0 12px;
   border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
   flex-shrink: 0;
+  z-index: 5;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 .header__title {
@@ -84,7 +112,9 @@ body {
   align-items: center;
   gap: 6px;
   font-size: 10px;
+  letter-spacing: 0.08em;
   color: var(--color-text-dim);
+  font-variant-numeric: tabular-nums;
 }
 
 .status-dot {
@@ -118,8 +148,20 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 10px 12px;
-  padding-bottom: calc(var(--nav-height) + 10px);
+  padding-bottom: calc(var(--nav-height) + 10px + var(--safe-bottom));
   -webkit-overflow-scrolling: touch;
+}
+
+/* Logs own the full remaining height instead of scrolling inside a page. */
+.main--logs {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.main--logs > .empty-state {
+  flex: 1;
+  height: auto;
 }
 
 .nav {
@@ -129,10 +171,14 @@ body {
   transform: translateX(-50%);
   width: 100%;
   max-width: 480px;
-  height: var(--nav-height);
+  height: calc(var(--nav-height) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
   display: flex;
   border-top: 1px solid var(--color-border);
   background: var(--color-bg);
+  background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   z-index: 10;
 }
 
@@ -141,6 +187,7 @@ body {
 }
 
 .nav__tab {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -167,6 +214,23 @@ body {
   color: var(--color-accent);
 }
 
+.nav__tab--active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 26px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--color-accent);
+  box-shadow: 0 0 8px var(--color-accent);
+}
+
+.nav__tab--active .nav__icon {
+  text-shadow: 0 0 10px currentColor;
+}
+
 .nav__icon {
   font-size: 16px;
   line-height: 1;
@@ -179,10 +243,17 @@ body {
 }
 
 .metric-card {
+  display: flex;
+  flex-direction: column;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  padding: 10px;
+  padding: 10px 10px 8px;
+  transition: border-color 0.15s;
+}
+
+.metric-card:hover {
+  border-color: var(--color-border-hi);
 }
 
 .metric-card__label {
@@ -194,8 +265,10 @@ body {
 }
 
 .metric-card__value {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
   color: var(--color-accent);
   font-variant-numeric: tabular-nums;
 }
@@ -204,6 +277,30 @@ body {
   font-size: 10px;
   color: var(--color-text-dim);
   margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-card__sub--spaced {
+  margin-top: 4px;
+}
+
+/* Sparklines bleed to the card edges so the card reads as one block. */
+.metric-card__chart {
+  margin: 6px -10px -8px;
+  margin-top: auto;
+  padding-top: 6px;
+  border-radius: 0 0 var(--radius) var(--radius);
+  overflow: hidden;
+}
+
+.metric-card__chart--pair {
+  display: flex;
+  gap: 4px;
+}
+
+.metric-card__chart-half {
+  flex: 1;
+  min-width: 0;
 }
 
 .bar {
@@ -241,6 +338,11 @@ body {
   cursor: pointer;
   min-height: 44px;
   transition: border-color 0.15s;
+}
+
+.container-row:hover {
+  border-color: var(--color-border-hi);
+  background: var(--color-surface-hi);
 }
 
 .container-row:active,
@@ -308,6 +410,7 @@ body {
   margin-bottom: 8px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
 .log-header__name {
@@ -329,22 +432,54 @@ body {
   color: var(--color-ok);
 }
 
+.log-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 .log-viewer {
+  flex: 1;
+  min-height: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 8px;
-  height: calc(100vh - var(--header-height) - var(--nav-height) - 80px);
   overflow-y: auto;
   font-size: 10px;
   line-height: 1.5;
   color: var(--color-text-dim);
   -webkit-overflow-scrolling: touch;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .log-line {
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+.log-line:hover {
+  background: rgba(128, 128, 128, 0.08);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.log-jump {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-bg);
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
 }
 
 .empty-state {
@@ -366,13 +501,16 @@ body {
 
 .network-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
+  gap: 2px 6px;
   margin-top: 4px;
 }
 
 .network-row span {
-  font-size: 11px;
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .network-row .up { color: var(--color-accent); }
@@ -394,10 +532,12 @@ body {
 .error-banner {
   padding: 8px 12px;
   background: #1a0808;
+  background: color-mix(in srgb, var(--color-danger) 12%, var(--color-bg));
   border: 1px solid var(--color-danger);
   border-radius: var(--radius);
   color: var(--color-danger);
   font-size: 10px;
+  flex-shrink: 0;
   margin-bottom: 8px;
 }
 
@@ -1062,7 +1202,9 @@ body {
 
 .range-selector__btn--active {
   border-color: var(--color-accent);
-  color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-bg);
+  font-weight: 600;
 }
 
 /* ===== Chart ===== */
@@ -1128,4 +1270,45 @@ body {
 .trakt-settings-status {
   font-size: 10px;
   color: var(--color-text-dim);
+}
+
+/* ===== Scrollbars ===== */
+
+.main::-webkit-scrollbar,
+.log-viewer::-webkit-scrollbar,
+.crosswatch-list::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.main::-webkit-scrollbar-track,
+.log-viewer::-webkit-scrollbar-track,
+.crosswatch-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main::-webkit-scrollbar-thumb,
+.log-viewer::-webkit-scrollbar-thumb,
+.crosswatch-list::-webkit-scrollbar-thumb {
+  background: var(--color-border-hi);
+  border-radius: 3px;
+}
+
+.main::-webkit-scrollbar-thumb:hover,
+.log-viewer::-webkit-scrollbar-thumb:hover,
+.crosswatch-list::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-dim);
+}
+
+/* ===== Reduced motion ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
